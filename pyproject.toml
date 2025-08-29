@@ -7,8 +7,8 @@ version = "0.1.0"
 
 dependencies = [
     # Core data processing
-    "numpy>=1.24.0",
-    "pandas>=2.0.0",
+    "numpy>=2.3.2",
+    "pandas>=2.3.2",
     #"scipy>=1.10.0",
 
     # Time series analysis
@@ -25,19 +25,20 @@ dependencies = [
     # Visualization
     #"matplotlib>=3.7.0",
     #"seaborn>=0.12.0",
-    "plotly>=5.18.0",
-    "streamlit>=1.40.1",
-    "streamlit-folium>=0.1.0",
+    "plotly>=6.3.0",
+    "streamlit>=1.49.0",
+    "streamlit-folium>=0.25.1",
     "streamlit-plotly-events>=0.0.6",
+    #"streamlit-advanced-plotly-chart>=0.0.2",
     "watchdog",
 
     # Geospatial analysis
     #"folium>=0.14.0",
-    "geopandas>=0.14.0",
+    "geopandas>=1.1.1",
 
     # Data validation and processing
     #"great-expectations>=0.17.0",  # For data quality checks
-    "pyarrow>=14.0.0",  # For efficient data storage
+    "pyarrow>=21.0.0",  # For efficient data storage
 ]
 
 classifiers = [
