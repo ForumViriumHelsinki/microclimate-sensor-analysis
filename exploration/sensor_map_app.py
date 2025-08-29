@@ -48,7 +48,7 @@ def create_sensor_map(sensor_df):
     center_lon = sensor_df["lon"].mean()
 
     # Create base map
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=12, tiles="OpenStreetMap")
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10, tiles="OpenStreetMap")
 
     # Add sensors to map
     for _, sensor in sensor_df.iterrows():
@@ -159,8 +159,8 @@ def create_comparison_plot(df, sensor1_id, sensor2_id, measurement_type, start_d
 
     # Set 1:1 aspect ratio and equal axis ranges
     fig.update_layout(
-        width=500,
-        height=500,
+        width=600,
+        height=600,
         xaxis=dict(range=[axis_min, axis_max], constrain="domain", showgrid=True, gridwidth=1, gridcolor="lightgray"),
         yaxis=dict(
             range=[axis_min, axis_max],
@@ -234,7 +234,7 @@ def create_timeseries_plot(df, sensor1_id, sensor2_id, measurement_type, start_d
     # Update layout with improved zoom and selection
     fig.update_layout(
         width=800,
-        height=400,
+        height=600,
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         xaxis=dict(
@@ -251,19 +251,9 @@ def create_timeseries_plot(df, sensor1_id, sensor2_id, measurement_type, start_d
         dragmode="zoom",
     )
 
-    # Add range selector buttons
+    # Keep only the range slider for navigation
     fig.update_layout(
         xaxis=dict(
-            rangeselector=dict(
-                buttons=list(
-                    [
-                        dict(count=1, label="1d", step="day", stepmode="backward"),
-                        dict(count=7, label="7d", step="day", stepmode="backward"),
-                        dict(count=30, label="30d", step="day", stepmode="backward"),
-                        dict(step="all"),
-                    ]
-                )
-            ),
             rangeslider=dict(visible=True),
             type="date",
         )
@@ -389,7 +379,7 @@ def main():
     map_data = st_folium(
         sensor_map,
         width=None,
-        height=400,
+        height=500,
         returned_objects=["last_object_clicked", "last_clicked"],
         key="sensor_map",
     )
@@ -434,25 +424,22 @@ def main():
 
             if ts_fig is not None:
                 st.info(
-                    "💡 Use the date inputs in the sidebar to filter time range. The scatter plot will automatically update."
+                    "💡 Use the Quick Time Range Selection buttons below or adjust the Time Period in the sidebar to filter data. The scatter plot will update accordingly."
                 )
 
-                # Display the chart with zoom functionality
+                # Display the chart with standard plotly chart
                 st.plotly_chart(ts_fig, use_container_width=True, key="main_timeseries")
+
+                # Note about zoom functionality
+                st.info(
+                    "🔍 **Zoom Tip**: After zooming in the chart above, use the Quick Time Range Selection buttons below to set similar time ranges for both charts."
+                )
 
                 # Add manual time range controls
                 st.subheader("⏱️ Quick Time Range Selection")
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5, col6 = st.columns(6)
 
                 with col1:
-                    if st.button("📅 Last 24h"):
-                        end_time = sensor_data.index.max()
-                        start_time = end_time - timedelta(days=1)
-                        st.session_state.zoom_start_date = start_time
-                        st.session_state.zoom_end_date = end_time
-                        st.rerun()
-
-                with col2:
                     if st.button("📅 Last 7 days"):
                         end_time = sensor_data.index.max()
                         start_time = end_time - timedelta(days=7)
@@ -460,7 +447,7 @@ def main():
                         st.session_state.zoom_end_date = end_time
                         st.rerun()
 
-                with col3:
+                with col2:
                     if st.button("📅 Last 30 days"):
                         end_time = sensor_data.index.max()
                         start_time = end_time - timedelta(days=30)
@@ -468,7 +455,31 @@ def main():
                         st.session_state.zoom_end_date = end_time
                         st.rerun()
 
+                with col3:
+                    if st.button("📅 Last 90 days"):
+                        end_time = sensor_data.index.max()
+                        start_time = end_time - timedelta(days=90)
+                        st.session_state.zoom_start_date = start_time
+                        st.session_state.zoom_end_date = end_time
+                        st.rerun()
+
                 with col4:
+                    if st.button("📅 Last 1 year"):
+                        end_time = sensor_data.index.max()
+                        start_time = end_time - timedelta(days=365)
+                        st.session_state.zoom_start_date = start_time
+                        st.session_state.zoom_end_date = end_time
+                        st.rerun()
+
+                with col5:
+                    if st.button("📅 Last 2 years"):
+                        end_time = sensor_data.index.max()
+                        start_time = end_time - timedelta(days=731)
+                        st.session_state.zoom_start_date = start_time
+                        st.session_state.zoom_end_date = end_time
+                        st.rerun()
+
+                with col6:
                     if st.button("📅 Full range"):
                         st.session_state.zoom_start_date = None
                         st.session_state.zoom_end_date = None
