@@ -1,0 +1,18 @@
+# Core data processing
+pandas>=2.3.2
+numpy>=2.3.2
+pyarrow>=21.0.0
+
+# Streamlit and web components
+streamlit>=1.49.0
+streamlit-folium>=0.25.1
+
+# Visualization
+plotly>=6.3.0
+folium>=0.14.0
+
+# Geospatial data processing  
+geopandas>=1.1.1
+
+# JSON processing (built-in, but explicit for clarity)
+# json - built-in module
