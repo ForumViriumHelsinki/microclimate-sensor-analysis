@@ -24,5 +24,5 @@ To merge the raw data into a single file, run the
 script in the root of this project:
 
 ```
-python exploration/combine_raw_data.py --geojson-in data/raw/makelankatu_latest.geojson data/raw/r4c_all_latest.geojson  --geojson-out data/interim/data_latest.geojson --parquet-in data/raw/makelankatu.parquet data/raw/r4c_all.parquet --parquet-out data/interim/data.parquet
+python exploration/combine_raw_data.py --geojson-in data/raw/makelankatu_latest.geojson data/raw/r4c_all_latest.geojson  --geojson-out data/interim/data_latest.geojson --parquet-in data/raw/makelankatu.parquet data/raw/r4c_all.parquet --parquet-out data/interim/data.parquet --fmi-in data/raw/fmi_observations_weather_multipointcoverage-hki-area-202* --fmi-out data/interim/fmi.parquet
 ```
