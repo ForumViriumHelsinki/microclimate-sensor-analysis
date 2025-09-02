@@ -15,6 +15,12 @@ def load_sensor_data():
 
 
 @st.cache_data
+def load_fmi_data():
+    """Load FMI weather station data"""
+    return pd.read_parquet("/app/data/interim/fmi_1h.parquet")
+
+
+@st.cache_data
 def load_sensor_metadata():
     """Load sensor locations and metadata from GeoJSON"""
     with open("/app/data/interim/data_latest.geojson", "r") as f:
@@ -189,8 +195,10 @@ def create_comparison_plot(df, sensor1_id, sensor2_id, measurement_type, start_d
     return fig, merged_data
 
 
-def create_timeseries_plot(df, sensor1_id, sensor2_id, measurement_type, start_date, end_date):
-    """Create time series plot showing temperature curves for selected sensors"""
+def create_timeseries_plot(
+    df, sensor1_id, sensor2_id, measurement_type, start_date, end_date, fmi_station=None, fmi_measurements=None
+):
+    """Create time series plot showing temperature curves for selected sensors with optional FMI overlay"""
     # Convert dates to datetime with timezone
     start_datetime = pd.to_datetime(start_date).tz_localize("UTC")
     end_datetime = pd.to_datetime(end_date).tz_localize("UTC") + timedelta(days=1)
@@ -258,6 +266,62 @@ def create_timeseries_plot(df, sensor1_id, sensor2_id, measurement_type, start_d
             type="date",
         )
     )
+
+    # Add FMI data overlay if requested
+    if fmi_station and fmi_station != "None" and fmi_measurements:
+        fmi_data = load_fmi_data()
+        fmi_filtered = fmi_data[
+            (fmi_data["Station"] == fmi_station)
+            & (fmi_data.index >= start_datetime)
+            & (fmi_data.index <= end_datetime)
+        ]
+
+        if not fmi_filtered.empty:
+            # Add secondary y-axis for precipitation and cloud amount
+            has_secondary_axis = any(m in ["Cloud amount", "Precipitation amount"] for m in fmi_measurements)
+
+            for measurement in fmi_measurements:
+                if measurement in fmi_filtered.columns and not fmi_filtered[measurement].isna().all():
+                    if measurement == "Air temperature":
+                        # Green dashed line for temperature
+                        fig.add_scatter(
+                            x=fmi_filtered.index,
+                            y=fmi_filtered[measurement],
+                            mode="lines",
+                            name=f"FMI {measurement}",
+                            line=dict(color="green", width=2, dash="dash"),
+                            yaxis="y",
+                        )
+
+                    elif measurement == "Relative humidity":
+                        # Green dashed line for humidity
+                        fig.add_scatter(
+                            x=fmi_filtered.index,
+                            y=fmi_filtered[measurement],
+                            mode="lines",
+                            name=f"FMI {measurement}",
+                            line=dict(color="green", width=2, dash="dash"),
+                            yaxis="y",
+                        )
+
+                    elif measurement in ["Cloud amount", "Precipitation amount"]:
+                        # Bar chart for cloud amount and precipitation on secondary axis
+                        fig.add_bar(
+                            x=fmi_filtered.index,
+                            y=fmi_filtered[measurement],
+                            name=f"FMI {measurement}",
+                            marker_color="lightblue" if measurement == "Cloud amount" else "lightgreen",
+                            opacity=0.6,
+                            yaxis="y2",
+                        )
+
+            # Configure secondary y-axis if needed
+            if has_secondary_axis:
+                fig.update_layout(
+                    yaxis2=dict(
+                        title="Cloud amount (oktas) / Precipitation (mm)", overlaying="y", side="right", showgrid=False
+                    )
+                )
 
     return fig
 
@@ -329,6 +393,40 @@ def main():
 
         # Measurement type selection
         measurement_type = st.selectbox("Measurement type", ["temperature", "humidity"])
+
+        # FMI weather station selection
+        st.header("🌦️ FMI Weather Station")
+
+        # Load FMI data to get available stations
+        fmi_data = load_fmi_data()
+        available_stations = ["None"] + sorted(fmi_data["Station"].unique().tolist())
+
+        # Initialize session state for FMI station
+        if "selected_fmi_station" not in st.session_state:
+            st.session_state.selected_fmi_station = "None"
+
+        selected_fmi_station = st.selectbox(
+            "Compare with FMI station",
+            available_stations,
+            index=available_stations.index(st.session_state.selected_fmi_station),
+            key="fmi_station_select",
+            help="Select a weather station to overlay FMI data on the time series plot",
+        )
+
+        # Update session state
+        st.session_state.selected_fmi_station = selected_fmi_station
+
+        if selected_fmi_station != "None":
+            # FMI measurement selection
+            fmi_measurements = st.multiselect(
+                "FMI measurements to show",
+                ["Air temperature", "Relative humidity", "Cloud amount", "Precipitation amount"],
+                default=["Air temperature"] if measurement_type == "temperature" else ["Relative humidity"],
+                help="Select which FMI measurements to display as overlay",
+            )
+            st.session_state.selected_fmi_measurements = fmi_measurements
+        else:
+            st.session_state.selected_fmi_measurements = []
 
         # Date range selection
         st.header("📅 Time Period")
@@ -420,7 +518,16 @@ def main():
 
         with tab1:
             # Time series plot
-            ts_fig = create_timeseries_plot(sensor_data, sensor1, sensor2, measurement_type, start_date, end_date)
+            ts_fig = create_timeseries_plot(
+                sensor_data,
+                sensor1,
+                sensor2,
+                measurement_type,
+                start_date,
+                end_date,
+                fmi_station=st.session_state.get("selected_fmi_station", "None"),
+                fmi_measurements=st.session_state.get("selected_fmi_measurements", []),
+            )
 
             if ts_fig is not None:
                 st.info(
