@@ -1,5 +1,5 @@
 # Use official Python runtime as base image
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 # Set working directory in container
 WORKDIR /app
@@ -23,8 +23,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY app.py .
+# Note: app.py will be mounted as volume during development
+# COPY app.py .
 
 # Create data directory for volume mounting
 RUN mkdir -p /app/data/interim
@@ -46,4 +46,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Run Streamlit with custom base URL path
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.baseUrlPath=/sensor-map"]
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.baseUrlPath=/sensor-map", "--server.fileWatcherType=poll"]
