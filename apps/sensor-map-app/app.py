@@ -219,7 +219,87 @@ def create_timeseries_plot(
         },
     )
 
-    # Add sensor 1 data
+    # Get FMI data first to determine if we need secondary axis
+    fmi_data = None
+    fmi_filtered = None
+    has_secondary_axis = False
+
+    if fmi_station and fmi_station != "None" and fmi_measurements:
+        fmi_data = load_fmi_data()
+        fmi_filtered = fmi_data[
+            (fmi_data["Station"] == fmi_station)
+            & (fmi_data.index >= start_datetime)
+            & (fmi_data.index <= end_datetime)
+        ]
+        has_secondary_axis = any(m in ["Cloud amount", "Precipitation amount"] for m in fmi_measurements)
+
+    # LAYER 1 (Background): Add cloud amount first (furthest back)
+    if fmi_filtered is not None and not fmi_filtered.empty:
+        if "Cloud amount" in fmi_measurements and "Cloud amount" in fmi_filtered.columns:
+            if not fmi_filtered["Cloud amount"].isna().all():
+                fig.add_bar(
+                    x=fmi_filtered.index,
+                    y=fmi_filtered["Cloud amount"],
+                    name="FMI Cloud amount",
+                    marker_color="lightblue",
+                    opacity=0.4,
+                    yaxis="y2",
+                    hovertemplate="<b>%{fullData.name}</b><br>"
+                    + "Time: %{x}<br>"
+                    + "Cloud amount: %{y:.1f} oktas<br>"
+                    + "<extra></extra>",
+                )
+
+    # LAYER 2: Add precipitation amount (on top of cloud amount)
+    if fmi_filtered is not None and not fmi_filtered.empty:
+        if "Precipitation amount" in fmi_measurements and "Precipitation amount" in fmi_filtered.columns:
+            if not fmi_filtered["Precipitation amount"].isna().all():
+                fig.add_bar(
+                    x=fmi_filtered.index,
+                    y=fmi_filtered["Precipitation amount"],
+                    name="FMI Precipitation amount",
+                    marker_color="lightgreen",
+                    opacity=0.6,
+                    yaxis="y2",
+                    hovertemplate="<b>%{fullData.name}</b><br>"
+                    + "Time: %{x}<br>"
+                    + "Precipitation: %{y:.1f} mm<br>"
+                    + "<extra></extra>",
+                )
+
+    # LAYER 3: Add FMI temperature/humidity lines
+    if fmi_filtered is not None and not fmi_filtered.empty:
+        if "Air temperature" in fmi_measurements and "Air temperature" in fmi_filtered.columns:
+            if not fmi_filtered["Air temperature"].isna().all():
+                fig.add_scatter(
+                    x=fmi_filtered.index,
+                    y=fmi_filtered["Air temperature"],
+                    mode="lines",
+                    name="FMI Air temperature",
+                    line=dict(color="green", width=2, dash="dash"),
+                    yaxis="y",
+                    hovertemplate="<b>%{fullData.name}</b><br>"
+                    + "Time: %{x}<br>"
+                    + "Temperature: %{y:.1f}°C<br>"
+                    + "<extra></extra>",
+                )
+
+        if "Relative humidity" in fmi_measurements and "Relative humidity" in fmi_filtered.columns:
+            if not fmi_filtered["Relative humidity"].isna().all():
+                fig.add_scatter(
+                    x=fmi_filtered.index,
+                    y=fmi_filtered["Relative humidity"],
+                    mode="lines",
+                    name="FMI Relative humidity",
+                    line=dict(color="green", width=2, dash="dash"),
+                    yaxis="y",
+                    hovertemplate="<b>%{fullData.name}</b><br>"
+                    + "Time: %{x}<br>"
+                    + "Humidity: %{y:.1f}%<br>"
+                    + "<extra></extra>",
+                )
+
+    # LAYER 4 & 5 (Foreground): Add sensor data last (on top)
     if not data1.empty:
         fig.add_scatter(
             x=data1.index,
@@ -227,9 +307,15 @@ def create_timeseries_plot(
             mode="lines",
             name=f"Sensor 1: {sensor1_id}",
             line=dict(color="red", width=2),
+            hovertemplate="<b>%{fullData.name}</b><br>"
+            + "Time: %{x}<br>"
+            + f"{measurement_type.capitalize()}: "
+            + "%{y:.1f}"
+            + ("°C" if measurement_type == "temperature" else "%")
+            + "<br>"
+            + "<extra></extra>",
         )
 
-    # Add sensor 2 data
     if not data2.empty:
         fig.add_scatter(
             x=data2.index,
@@ -237,6 +323,13 @@ def create_timeseries_plot(
             mode="lines",
             name=f"Sensor 2: {sensor2_id}",
             line=dict(color="blue", width=2),
+            hovertemplate="<b>%{fullData.name}</b><br>"
+            + "Time: %{x}<br>"
+            + f"{measurement_type.capitalize()}: "
+            + "%{y:.1f}"
+            + ("°C" if measurement_type == "temperature" else "%")
+            + "<br>"
+            + "<extra></extra>",
         )
 
     # Update layout with improved zoom and selection
@@ -257,71 +350,17 @@ def create_timeseries_plot(
         uirevision="timeseries",
         # Add selection tools
         dragmode="zoom",
+        # Improve hover behavior
+        hovermode="x unified",
     )
 
-    # Keep only the range slider for navigation
-    fig.update_layout(
-        xaxis=dict(
-            rangeslider=dict(visible=True),
-            type="date",
+    # Configure secondary y-axis if needed
+    if has_secondary_axis:
+        fig.update_layout(
+            yaxis2=dict(
+                title="Cloud amount (oktas) / Precipitation (mm)", overlaying="y", side="right", showgrid=False
+            )
         )
-    )
-
-    # Add FMI data overlay if requested
-    if fmi_station and fmi_station != "None" and fmi_measurements:
-        fmi_data = load_fmi_data()
-        fmi_filtered = fmi_data[
-            (fmi_data["Station"] == fmi_station)
-            & (fmi_data.index >= start_datetime)
-            & (fmi_data.index <= end_datetime)
-        ]
-
-        if not fmi_filtered.empty:
-            # Add secondary y-axis for precipitation and cloud amount
-            has_secondary_axis = any(m in ["Cloud amount", "Precipitation amount"] for m in fmi_measurements)
-
-            for measurement in fmi_measurements:
-                if measurement in fmi_filtered.columns and not fmi_filtered[measurement].isna().all():
-                    if measurement == "Air temperature":
-                        # Green dashed line for temperature
-                        fig.add_scatter(
-                            x=fmi_filtered.index,
-                            y=fmi_filtered[measurement],
-                            mode="lines",
-                            name=f"FMI {measurement}",
-                            line=dict(color="green", width=2, dash="dash"),
-                            yaxis="y",
-                        )
-
-                    elif measurement == "Relative humidity":
-                        # Green dashed line for humidity
-                        fig.add_scatter(
-                            x=fmi_filtered.index,
-                            y=fmi_filtered[measurement],
-                            mode="lines",
-                            name=f"FMI {measurement}",
-                            line=dict(color="green", width=2, dash="dash"),
-                            yaxis="y",
-                        )
-
-                    elif measurement in ["Cloud amount", "Precipitation amount"]:
-                        # Bar chart for cloud amount and precipitation on secondary axis
-                        fig.add_bar(
-                            x=fmi_filtered.index,
-                            y=fmi_filtered[measurement],
-                            name=f"FMI {measurement}",
-                            marker_color="lightblue" if measurement == "Cloud amount" else "lightgreen",
-                            opacity=0.6,
-                            yaxis="y2",
-                        )
-
-            # Configure secondary y-axis if needed
-            if has_secondary_axis:
-                fig.update_layout(
-                    yaxis2=dict(
-                        title="Cloud amount (oktas) / Precipitation (mm)", overlaying="y", side="right", showgrid=False
-                    )
-                )
 
     return fig
 
