@@ -175,7 +175,8 @@ def save_aggregated_data(df: pd.DataFrame, gdf, output_path: Path, aggregation_l
             device_data = filtered_df[filtered_df["dev-id"] == device_id].copy()
 
             # Resample numeric columns (mean aggregation)
-            device_resampled = device_data[numeric_columns].resample(aggregation_level).mean()
+            # Use label='right' for meteorological convention (timestamp at end of period)
+            device_resampled = device_data[numeric_columns].resample(aggregation_level, label="right").mean()
 
             # Add device ID back
             device_resampled["dev-id"] = device_id
