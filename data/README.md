@@ -8,10 +8,11 @@ development and AI assistant.
 ## raw
 
 data/raw contains raw data, downloaded from the web server.
-To update it, run this command this directory:
+To update it, run these commands in this directory:
 
 ```
-wget -r -np -nd -N -A "*.geojson,*.parquet" https://bri3.fvh.io/opendata/makelankatu/ https://bri3.fvh.io/opendata/r4c/ -P ./raw/
+wget -r -np -nd -N -A "*.geojson,*.parquet" https://bri3.fvh.io/opendata/microclimate/ -P ./raw/
+wget -r -np -nd -N -A "fmi*.parquet"  https://bri3.fvh.io/opendata/r4c/ -P ./raw/
 ```
 
 ## interim
@@ -24,5 +25,5 @@ To merge the raw data into a single file, run the
 script in the root of this project:
 
 ```
-python exploration/combine_raw_data.py --geojson-in data/raw/makelankatu_latest.geojson data/raw/r4c_all_latest.geojson  --geojson-out data/interim/data_latest.geojson --parquet-in data/raw/makelankatu.parquet data/raw/r4c_all.parquet --parquet-out data/interim/data.parquet --fmi-in data/raw/fmi_observations_weather_multipointcoverage-hki-area-202* --fmi-out data/interim/fmi.parquet
+python exploration/combine_raw_data.py --geojson-in data/raw/kymp-r4c_latest.geojson  --geojson-out data/interim/data_latest.geojson --parquet-in data/raw/kymp-r4c*.parquet --parquet-out data/interim/data.parquet --fmi-in data/raw/fmi_observations_weather_multipointcoverage-hki-area-202* --fmi-out data/interim/fmi.parquet
 ```

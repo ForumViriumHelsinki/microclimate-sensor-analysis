@@ -82,8 +82,10 @@ def save_aggregated_data(df: pd.DataFrame, gdf, output_path: Path, aggregation_l
         device_id = row["id"]
         install_date = None
 
-        # Check for installation date in either Date_installed or Asennettu_pvm fields
-        if pd.notna(row.get("Date_installed")):
+        # Check for installation date in installationDate, Date_installed or Asennettu_pvm fields
+        if pd.notna(row.get("installationDate")):
+            install_date = row["installationDate"]
+        elif pd.notna(row.get("Date_installed")):
             install_date = row["Date_installed"]
         elif pd.notna(row.get("Asennettu_pvm")):
             install_date = row["Asennettu_pvm"]
