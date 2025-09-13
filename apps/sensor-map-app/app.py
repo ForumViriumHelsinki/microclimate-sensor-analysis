@@ -1,3 +1,58 @@
+"""
+Streamlit app for comparing temperature and humidity measurements from two sensors.
+
+Features:
+- Map with sensor locations
+- Comparison plot of two sensors
+- Time series plot of two sensors
+- FMI weather station data overlay
+
+Metadata example from  geojson:
+
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "24E124136E106661",
+        "project": "KYMP",
+        "installationDate": "2024-06-16T00:00:00",
+        "street": "Rautalammintie 1",
+        "postalcode": "00550",
+        "city": "Helsinki",
+        "district": "Vallila",
+        "sunExposure": 1.0,
+        "solarShielding": 1.0,
+        "heightFromGround": 3.0,
+        "mountingType": "metal pole",
+        "terrain": "flat",
+        "groundCover": "grass/50, stone pavement/50",
+        "landUse": null,
+        "buildingDensity": null,
+        "LCZ": null,
+        "LCZ long": null,
+        "Kuvaus": "avoimella kentällä",
+        "fid": 4.0,
+        "Tyyppi": "Auringossa",
+        "Huomiot": "Tolppa parkkialueella",
+        "Kiinnitystapa": "Tolppa",
+        "Sensori": 6661.0,
+        "measurement": {
+          "time": "2025-09-13T08:42:32.506000+03:00",
+          "humidity": 89.5,
+          "temperature": 16.199999999999999
+        }
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          24.95566158371556,
+          60.196418390653328
+        ]
+      }
+    },
+
+
+"""
+
 import json
 from datetime import timedelta
 
@@ -37,10 +92,17 @@ def load_sensor_metadata():
             "street": props.get("street", ""),
             "district": props.get("district", ""),
             "huomiot": props.get("Huomiot", ""),
+            "kuvaus": props.get("Kuvaus", ""),
+            "mounting_type": props.get("mountingType", ""),
+            "height_from_ground": props.get("heightFromGround", ""),
+            "ground_cover": props.get("groundCover", ""),
+            "sun_exposure": props.get("sunExposure", ""),
+            "installation_date": props.get("installationDate", ""),
             "lat": feature["geometry"]["coordinates"][1],
             "lon": feature["geometry"]["coordinates"][0],
             "current_temp": props["measurement"]["temperature"] if "measurement" in props else None,
             "current_humidity": props["measurement"]["humidity"] if "measurement" in props else None,
+            "measurement_time": props["measurement"]["time"] if "measurement" in props else None,
         }
         sensors.append(sensor_info)
 
@@ -69,23 +131,57 @@ def create_sensor_map(sensor_df):
             color = "gray"
             icon_color = "white"
 
-        # Create popup text with sensor selection information
+        # Format sensor ID with bold last 4 digits
+        sensor_id = sensor["id"]
+        if len(sensor_id) >= 4:
+            formatted_id = sensor_id[:-4] + f"<b>{sensor_id[-4:]}</b>"
+        else:
+            formatted_id = f"<b>{sensor_id}</b>"
+
+        # Format measurement time and values
+        measurement_line = ""
+        if sensor["measurement_time"] and sensor["current_temp"] is not None:
+            from datetime import datetime
+
+            try:
+                # Parse ISO timestamp and format to Finnish time
+                dt = datetime.fromisoformat(sensor["measurement_time"].replace("Z", "+00:00"))
+                time_str = dt.strftime("%d.%m. %H:%M")
+                measurement_line = f"{time_str} • {sensor['current_temp']:.1f}°C • {sensor['current_humidity']:.1f}%"
+            except (ValueError, TypeError):
+                measurement_line = f"{sensor['current_temp']:.1f}°C • {sensor['current_humidity']:.1f}%"
+
+        # Format location (district, street)
+        location_parts = []
+        if sensor["district"]:
+            location_parts.append(sensor["district"])
+        if sensor["street"]:
+            location_parts.append(sensor["street"])
+        location_line = ", ".join(location_parts) if location_parts else "N/A"
+
+        # Format secondary info on one line
+        secondary_info = []
+        if sensor["mounting_type"]:
+            secondary_info.append(f"Mount: {sensor['mounting_type']}")
+        if sensor["height_from_ground"]:
+            secondary_info.append(f"Height: {sensor['height_from_ground']}m")
+        if sensor["ground_cover"]:
+            secondary_info.append(f"Ground cover: {sensor['ground_cover']}")
+        if sensor["sun_exposure"] is not None:
+            secondary_info.append(f"Sun exposure: {sensor['sun_exposure']}")
+
+        secondary_line = " • ".join(secondary_info) if secondary_info else ""
+
+        # Create popup text
         popup_text = f"""
-        <div style="font-family: Arial, sans-serif; min-width: 250px;">
-            <b>ID:</b> {sensor["id"]}<br>
-            <b>Name:</b> {sensor["name"] or "N/A"}<br>
-            <b>Type:</b> {sensor["tyyppi"] or "N/A"}<br>
-            <b>Street:</b> {sensor["street"] or "N/A"}<br>
-            <b>District:</b> {sensor["district"] or "N/A"}<br>
-            <b>Notes:</b> {sensor["huomiot"] or "N/A"}<br>
-            <b>Current Temp:</b> {sensor["current_temp"]:.1f}°C<br>
-            <b>Current Humidity:</b> {sensor["current_humidity"]:.1f}%<br><br>
-            
-            <div style="text-align: center; padding: 10px; background-color: #e3f2fd; border-radius: 6px; border: 2px solid #2196f3;">
-                <p style="margin: 0; color: #1976d2; font-weight: bold; font-size: 14px;">
-                    ➡️ Use buttons in sidebar to select as Sensor 1 or 2
-                </p>
-            </div>
+        <div style="font-family: Arial, sans-serif; font-size: 13px; min-width: 280px; line-height: 1.4;">
+            <div style="font-size: 14px; margin-bottom: 8px;">{formatted_id}</div>
+            <div style="margin-bottom: 6px; color: #2E8B57; font-weight: 500;">{measurement_line}</div>
+            <div style="margin-bottom: 8px;">{location_line}</div>
+            {f'<div style="font-size: 11px; color: #666; margin-bottom: 6px;">{secondary_line}</div>' if secondary_line else ""}
+            {f'<div style="font-size: 11px; color: #666; font-style: italic;">{sensor["kuvaus"]}</div>' if sensor.get("kuvaus") else ""}
+            {f'<div style="font-size: 11px; color: #888; margin-top: 4px;">Notes: {sensor["huomiot"]}</div>' if sensor.get("huomiot") else ""}
+            <div style="margin-top: 10px; font-size: 11px; color: #999; font-style: italic;">Click to select for comparison</div>
         </div>
         """
 
