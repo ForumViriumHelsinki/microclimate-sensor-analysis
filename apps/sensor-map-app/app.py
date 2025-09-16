@@ -647,6 +647,13 @@ def main():
     # Create comparison visualizations
     st.subheader("📈 Sensor Comparison")
 
+    # Add explanation about UTC time usage in visualizations
+    st.info(
+        "ℹ️ **Time Reference**: All visualizations use UTC time for physical consistency. "
+        "In Helsinki, solar noon occurs at approximately 10:20 UTC (13:20 summer time, 12:20 winter time). "
+        "This ensures that measurements taken at the same solar position appear with consistent colors in scatter plots."
+    )
+
     if sensor1 != sensor2:
         # Create tabs for different visualizations
         tab1, tab2 = st.tabs(["📈 Time Series", "📊 Scatter Plot"])
